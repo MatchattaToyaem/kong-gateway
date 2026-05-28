@@ -206,4 +206,3 @@ consumers:
       - algorithm: HS256
         key: ${JWT_ISSUER_URI}
         secret: ${JWT_SECRET}
-        secret_is_base64: true
