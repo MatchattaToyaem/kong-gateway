@@ -71,12 +71,6 @@ services:
           - http
           - https
     plugins:
-      - name: jwt
-        config:
-          claims_to_verify:
-            - exp
-          key_claim_name: iss
-          secret_is_base64: true
       - name: cors
         config:
           origins:
@@ -123,12 +117,6 @@ services:
           - /ocr-trigger
         strip_path: false
     plugins:
-      - name: jwt
-        config:
-          claims_to_verify:
-            - exp
-          key_claim_name: iss
-          secret_is_base64: true
       - name: cors
         config:
           origins:
@@ -169,12 +157,6 @@ services:
           - /api/chatbot
         strip_path: true
     plugins:
-      - name: jwt
-        config:
-          claims_to_verify:
-            - exp
-          key_claim_name: iss
-          secret_is_base64: true
       - name: cors
         config:
           origins:
@@ -196,16 +178,3 @@ services:
           minute: 30
           policy: local
 
-# ---------------------------------------------------------------------------
-# Consumer
-# key    = JWT_ISSUER_URI from Key Vault — must match the 'iss' claim in tokens
-# secret = JWT_SECRET from Key Vault — base64-encoded; secret_is_base64: true on
-#          the JWT plugin tells Kong to decode it before HMAC verification, matching
-#          what JwtTokenProvider does (Base64.getDecoder().decode(secret)).
-# ---------------------------------------------------------------------------
-consumers:
-  - username: platform-consumer
-    jwt_secrets:
-      - algorithm: HS256
-        key: ${JWT_ISSUER_URI}
-        secret: ${JWT_SECRET}

@@ -14,12 +14,6 @@ properties:
     secrets:
       - name: acr-password
         value: PLACEHOLDER_ACR
-      - name: jwt-secret
-        keyVaultUrl: https://ai-platform-keyvault-01.vault.azure.net/secrets/jwt-secret
-        identity: System
-      - name: jwt-issuer-uri
-        keyVaultUrl: https://ai-platform-keyvault-01.vault.azure.net/secrets/jwt-issuer-uri
-        identity: System
     ingress:
       external: true
       targetPort: 8000
@@ -43,11 +37,6 @@ properties:
             value: "off"
           - name: KONG_LOG_LEVEL
             value: "info"
-          - name: JWT_SECRET
-            secretRef: jwt-secret
-          - name: JWT_ISSUER_URI
-            secretRef: jwt-issuer-uri
-
     scale:
       minReplicas: 1
       maxReplicas: 3
