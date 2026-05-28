@@ -46,6 +46,6 @@ pipelines:
     - step: *build-push
 
   branches:
-    master:
+    main:
       - step: *build-push
       - step: *deploy
