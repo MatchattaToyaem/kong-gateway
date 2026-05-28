@@ -70,8 +70,6 @@ services:
         protocols:
           - http
           - https
-          - ws
-          - wss
     plugins:
       - name: jwt
         config:
