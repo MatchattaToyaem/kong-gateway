@@ -13,7 +13,7 @@ properties:
         passwordSecretRef: acr-password
     secrets:
       - name: acr-password
-        value:
+        value: PLACEHOLDER_ACR
       - name: jwt-secret
         keyVaultUrl: https://ai-platform-keyvault-01.vault.azure.net/secrets/jwt-secret
         identity: System
