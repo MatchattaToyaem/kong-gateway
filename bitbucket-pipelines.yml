@@ -41,6 +41,18 @@ definitions:
                 --yaml kong-gateway.yaml
             fi
 
+          - |
+            KONG_PRINCIPAL_ID=$(az containerapp show \
+              --name kong-gateway \
+              --resource-group ai-platform \
+              --query identity.principalId \
+              --output tsv)
+            az role assignment create \
+              --role "Key Vault Secrets User" \
+              --assignee-object-id "$KONG_PRINCIPAL_ID" \
+              --assignee-principal-type ServicePrincipal \
+              --scope /subscriptions/53f34d3b-bdc7-4e68-89c4-0e4f1947eb31/resourceGroups/ai-platform/providers/Microsoft.KeyVault/vaults/ai-platform-keyvault-01
+
 pipelines:
   default:
     - step: *build-push

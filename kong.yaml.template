@@ -195,9 +195,10 @@ services:
 
 # ---------------------------------------------------------------------------
 # Consumer
-# key    = value of the 'iss' claim in JWTs (JWT_ISSUER_URI from Key Vault)
-# secret = HMAC secret used to sign JWTs   (JWT_SECRET from Key Vault)
-# Both values are injected at startup via entrypoint.sh / envsubst.
+# key    = JWT_ISSUER_URI from Key Vault — must match the 'iss' claim in tokens
+# secret = JWT_SECRET from Key Vault — stored base64-encoded, so secret_is_base64
+#          tells Kong to decode it before verifying the HMAC signature, matching
+#          what JwtTokenProvider does (Base64.getDecoder().decode(base64Secret)).
 # ---------------------------------------------------------------------------
 consumers:
   - username: platform-consumer
@@ -205,3 +206,4 @@ consumers:
       - algorithm: HS256
         key: ${JWT_ISSUER_URI}
         secret: ${JWT_SECRET}
+        secret_is_base64: true
