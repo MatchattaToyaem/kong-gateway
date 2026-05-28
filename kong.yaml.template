@@ -1,0 +1,134 @@
+_format_version: "3.0"
+_transform: true
+
+# ---------------------------------------------------------------------------
+# Services and routes
+# All downstream URLs use internal Azure Container Apps DNS.
+# Adjust path prefixes to match your Spring Boot controllers if needed.
+# ---------------------------------------------------------------------------
+
+services:
+  # ------------------------------------------------------------------
+  # Authentication service — login, register, token refresh.
+  # JWT is NOT required here (these endpoints issue tokens).
+  # Rate-limited to slow down brute-force attempts.
+  # ------------------------------------------------------------------
+  - name: authentication-service
+    url: http://authentication-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    routes:
+      - name: auth-routes
+        paths:
+          - /api/auth
+        strip_path: false
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+          max_age: 3600
+      - name: rate-limiting
+        config:
+          minute: 20
+          policy: local
+
+  # ------------------------------------------------------------------
+  # Chat service — conversation and message history.
+  # JWT validation + rate limiting enforced.
+  # ------------------------------------------------------------------
+  - name: chat-service
+    url: http://chat-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    routes:
+      - name: chat-routes
+        paths:
+          - /api/chat
+        strip_path: false
+    plugins:
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+          max_age: 3600
+      - name: rate-limiting
+        config:
+          minute: 60
+          policy: local
+
+  # ------------------------------------------------------------------
+  # Document service — SharePoint document access.
+  # JWT validation + rate limiting enforced.
+  # ------------------------------------------------------------------
+  - name: document-service
+    url: http://document-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    routes:
+      - name: document-routes
+        paths:
+          - /api/documents
+        strip_path: false
+    plugins:
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+          max_age: 3600
+      - name: rate-limiting
+        config:
+          minute: 30
+          policy: local
+
+# ---------------------------------------------------------------------------
+# Consumer
+# key   = the value of the 'iss' claim your authentication-service puts in JWTs
+#         (JWT_ISSUER_URI from Key Vault)
+# secret = the HMAC secret used to sign the JWTs
+#         (JWT_SECRET from Key Vault)
+# Both values are injected at startup via entrypoint.sh / envsubst.
+# ---------------------------------------------------------------------------
+consumers:
+  - username: platform-consumer
+    jwt_secrets:
+      - algorithm: HS256
+        key: ${JWT_ISSUER_URI}
+        secret: ${JWT_SECRET}

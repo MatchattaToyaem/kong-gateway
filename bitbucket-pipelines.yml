@@ -1,0 +1,51 @@
+image: atlassian/default-image:4
+
+definitions:
+  steps:
+    - step: &build-push
+        name: Build and Push to ACR
+        services:
+          - docker
+        script:
+          - echo $ACR_PASSWORD | docker login oconnoraiplatform.azurecr.io
+              --username $ACR_USERNAME
+              --password-stdin
+          - docker build
+              -t oconnoraiplatform.azurecr.io/kong-gateway:$BITBUCKET_COMMIT .
+          - docker tag oconnoraiplatform.azurecr.io/kong-gateway:$BITBUCKET_COMMIT
+              oconnoraiplatform.azurecr.io/kong-gateway:latest
+          - docker push oconnoraiplatform.azurecr.io/kong-gateway:$BITBUCKET_COMMIT
+          - docker push oconnoraiplatform.azurecr.io/kong-gateway:latest
+
+    - step: &deploy
+        name: Deploy to Azure Container Apps
+        script:
+          - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+          - az login --service-principal
+              --username $AZURE_CLIENT_ID
+              --password $AZURE_CLIENT_SECRET
+              --tenant $AZURE_TENANT_ID
+
+          - sed -i "s/PLACEHOLDER_ACR/$ACR_PASSWORD/g" kong-gateway.yaml
+          - sed -i "s|oconnoraiplatform.azurecr.io/kong-gateway:latest|oconnoraiplatform.azurecr.io/kong-gateway:$BITBUCKET_COMMIT|g" kong-gateway.yaml
+          - |
+            if az containerapp show --name kong-gateway --resource-group ai-platform 2>/dev/null; then
+              az containerapp update \
+                --name kong-gateway \
+                --resource-group ai-platform \
+                --yaml kong-gateway.yaml
+            else
+              az containerapp create \
+                --name kong-gateway \
+                --resource-group ai-platform \
+                --yaml kong-gateway.yaml
+            fi
+
+pipelines:
+  default:
+    - step: *build-push
+
+  branches:
+    master:
+      - step: *build-push
+      - step: *deploy
