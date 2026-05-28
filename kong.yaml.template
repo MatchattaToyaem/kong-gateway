@@ -4,12 +4,11 @@ _transform: true
 # ---------------------------------------------------------------------------
 # Services and routes
 # All downstream URLs use internal Azure Container Apps DNS.
-# Adjust path prefixes to match your Spring Boot controllers if needed.
 # ---------------------------------------------------------------------------
 
 services:
   # ------------------------------------------------------------------
-  # Authentication service — login, register, token refresh.
+  # Authentication service — /api/auth/{token,refresh,logout}
   # JWT is NOT required here (these endpoints issue tokens).
   # Rate-limited to slow down brute-force attempts.
   # ------------------------------------------------------------------
@@ -43,16 +42,36 @@ services:
           policy: local
 
   # ------------------------------------------------------------------
-  # Chat service — conversation and message history.
-  # JWT validation + rate limiting enforced.
+  # Chat service — REST session management + WebSocket (STOMP).
+  #
+  # REST  (ChatSessionController):
+  #   GET    /api/chat-sessions
+  #   POST   /api/chat-sessions
+  #   GET    /api/chat-sessions/{id}
+  #   PUT    /api/chat-sessions/{id}
+  #   DELETE /api/chat-sessions/{id}
+  #   GET    /api/chat-sessions/user/{userName}
+  #   PUT    /api/chat-sessions/answer-rating/{id}
+  #
+  # WebSocket (STOMP broker endpoint):
+  #   WS/WSS /ws  →  STOMP destination /app/chat
   # ------------------------------------------------------------------
   - name: chat-service
     url: http://chat-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
     routes:
-      - name: chat-routes
+      - name: chat-session-routes
         paths:
-          - /api/chat
+          - /api/chat-sessions
         strip_path: false
+      - name: chat-ws-routes
+        paths:
+          - /ws
+        strip_path: false
+        protocols:
+          - http
+          - https
+          - ws
+          - wss
     plugins:
       - name: jwt
         config:
@@ -81,16 +100,74 @@ services:
           policy: local
 
   # ------------------------------------------------------------------
-  # Document service — SharePoint document access.
-  # JWT validation + rate limiting enforced.
+  # Document service — SharePoint document retrieval and OCR trigger.
+  #
+  # DocumentRetrievalController:
+  #   GET  /documents/file?path=<sharepoint-path>
+  #   GET  /documents/failed?page=&size=&from=&to=
+  #
+  # OcrTriggerController:
+  #   GET  /ocr-trigger
+  #
+  # FailedDocumentController:
+  #   (served under /documents/failed — covered by document-routes)
   # ------------------------------------------------------------------
   - name: document-service
     url: http://document-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
     routes:
       - name: document-routes
         paths:
-          - /api/documents
+          - /documents
         strip_path: false
+      - name: ocr-trigger-routes
+        paths:
+          - /ocr-trigger
+        strip_path: false
+    plugins:
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+          max_age: 3600
+      - name: rate-limiting
+        config:
+          minute: 30
+          policy: local
+
+  # ------------------------------------------------------------------
+  # Chatbot service — FastAPI RAG service (port 8000).
+  #
+  # POST  /api/chatbot/search   →  /search  (retrieval only, no LLM)
+  # POST  /api/chatbot/ask      →  /ask     (full RAG Q&A)
+  # GET   /api/chatbot/health   →  /health  (system status)
+  # GET   /api/chatbot/         →  /        (service info)
+  #
+  # strip_path: true strips /api/chatbot, forwarding the remainder
+  # (e.g. /api/chatbot/ask → /ask on the upstream FastAPI app).
+  # ------------------------------------------------------------------
+  - name: chatbot-service
+    url: http://chatbot-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:8000
+    routes:
+      - name: chatbot-routes
+        paths:
+          - /api/chatbot
+        strip_path: true
     plugins:
       - name: jwt
         config:
@@ -120,10 +197,8 @@ services:
 
 # ---------------------------------------------------------------------------
 # Consumer
-# key   = the value of the 'iss' claim your authentication-service puts in JWTs
-#         (JWT_ISSUER_URI from Key Vault)
-# secret = the HMAC secret used to sign the JWTs
-#         (JWT_SECRET from Key Vault)
+# key    = value of the 'iss' claim in JWTs (JWT_ISSUER_URI from Key Vault)
+# secret = HMAC secret used to sign JWTs   (JWT_SECRET from Key Vault)
 # Both values are injected at startup via entrypoint.sh / envsubst.
 # ---------------------------------------------------------------------------
 consumers:
