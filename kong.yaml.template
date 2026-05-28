@@ -3,7 +3,7 @@ _transform: true
 
 # ---------------------------------------------------------------------------
 # Services and routes
-# All downstream URLs use internal Azure Container Apps DNS.
+# All downstream URLs use external Azure Container Apps FQDNs.
 # ---------------------------------------------------------------------------
 
 services:
@@ -13,7 +13,7 @@ services:
   # Rate-limited to slow down brute-force attempts.
   # ------------------------------------------------------------------
   - name: authentication-service
-    url: http://authentication-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    url: https://authentication-service.proudground-90080d26.australiaeast.azurecontainerapps.io
     routes:
       - name: auth-routes
         paths:
@@ -57,7 +57,7 @@ services:
   #   WS/WSS /ws  →  STOMP destination /app/chat
   # ------------------------------------------------------------------
   - name: chat-service
-    url: http://chat-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    url: https://chat-service.proudground-90080d26.australiaeast.azurecontainerapps.io
     routes:
       - name: chat-session-routes
         paths:
@@ -113,7 +113,7 @@ services:
   #   (served under /documents/failed — covered by document-routes)
   # ------------------------------------------------------------------
   - name: document-service
-    url: http://document-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:80
+    url: https://document-service.proudground-90080d26.australiaeast.azurecontainerapps.io
     routes:
       - name: document-routes
         paths:
@@ -162,7 +162,7 @@ services:
   # (e.g. /api/chatbot/ask → /ask on the upstream FastAPI app).
   # ------------------------------------------------------------------
   - name: chatbot-service
-    url: http://chatbot-service.internal.proudground-90080d26.australiaeast.azurecontainerapps.io:8000
+    url: https://chatbot-service.proudground-90080d26.australiaeast.azurecontainerapps.io
     routes:
       - name: chatbot-routes
         paths:
